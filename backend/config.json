@@ -1,0 +1,12 @@
+{
+  "device": "HSC-2505X001",
+  "software": "1.0.0",
+  "location": "PT Smart Industri",
+  "geo": {
+    "latitude": -6.5221467,
+    "longitude": 106.8410066,
+    "altitude": 50.0
+  },
+  "parameters": ["temp", "hum", "press", "wspeed", "wdir", "rain", "srad"],
+  "port":"/dev/ttyS0"
+}

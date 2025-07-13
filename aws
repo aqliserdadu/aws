@@ -1,0 +1,152 @@
+#!/bin/bash
+
+SERVICES=("aws-sensor.service" "aws-web.service" "aws-api.service" "aws-backup.service")
+LOG_DIR="/opt/aws/app/logs"
+APP_BASE="/opt/aws"
+
+function check_exists() {
+    for service in "${SERVICES[@]}"; do
+        if [ -f "/etc/systemd/system/$service" ]; then
+            echo "✔ $service ditemukan"
+        else
+            echo "✖ $service TIDAK ditemukan"
+        fi
+    done
+}
+
+function start_services() {
+    for service in "${SERVICES[@]}"; do
+        sudo systemctl start "$service"
+        echo "▶️ $service dijalankan"
+    done
+}
+
+function stop_services() {
+    for service in "${SERVICES[@]}"; do
+        sudo systemctl stop "$service"
+        echo "⏹️ $service dihentikan"
+    done
+}
+
+function start_service_by_name() {
+    local name="$1"
+    local service_name="aws-${name}.service"
+    if [[ " ${SERVICES[*]} " == *"$service_name"* ]]; then
+        sudo systemctl start "$service_name"
+        echo "▶️ $service_name dijalankan"
+    else
+        echo "❌ Service '$name' tidak dikenal"
+    fi
+}
+
+function stop_service_by_name() {
+    local name="$1"
+    local service_name="aws-${name}.service"
+    if [[ " ${SERVICES[*]} " == *"$service_name"* ]]; then
+        sudo systemctl stop "$service_name"
+        echo "⏹️ $service_name dihentikan"
+    else
+        echo "❌ Service '$name' tidak dikenal"
+    fi
+}
+
+function reset_services() {
+    echo "🔁 Reset semua service..."
+    stop_services
+    start_services
+}
+
+function status_services() {
+    for service in "${SERVICES[@]}"; do
+        echo "📋 Status $service:"
+        sudo systemctl status "$service" --no-pager
+        echo ""
+    done
+}
+
+function uninstall_services(){
+    echo "🚨 Memulai proses uninstall AWS (Automatic Weather Station)..."
+
+    INSTALL_DIR="/opt/aws"
+    LOG_DIR="$INSTALL_DIR/logs"
+    BIN_PATH="/usr/bin/aws"
+    DB_DIR="$INSTALL_DIR/database"
+
+    # Tanya apakah ingin menghapus database
+    read -p "❓ Apakah Anda ingin menghapus database ? [y/N]: " DELETE_DB
+    DELETE_DB=${DELETE_DB,,}
+
+    echo "🛑 Menghentikan dan menonaktifkan service..."
+    for service in "${SERVICES[@]}"; do
+        if systemctl is-active --quiet "$service"; then
+            sudo systemctl stop "$service"
+            echo "✅ $service dihentikan"
+        fi
+        if systemctl is-enabled --quiet "$service"; then
+            sudo systemctl disable "$service"
+            echo "✅ $service dinonaktifkan"
+        fi
+        sudo rm -f "/etc/systemd/system/$service"
+        echo "🗑️ $service dihapus"
+    done
+
+    echo "🔄 Reload systemd daemon..."
+    sudo systemctl daemon-reload
+    sudo systemctl reset-failed
+
+    if [[ "$DELETE_DB" == "y" || "$DELETE_DB" == "yes" ]]; then
+        echo "🗑️ Menghapus seluruh direktori $INSTALL_DIR termasuk database..."
+        sudo rm -rf "$INSTALL_DIR"
+    else
+        echo "⚠️ Menyisakan database. Menghapus semua kecuali folder $DB_DIR..."
+        sudo find "$INSTALL_DIR" -mindepth 1 -not -path "$DB_DIR" -not -path "$DB_DIR/*" -exec rm -rf {} +
+        echo "✅ Folder database tetap disimpan di $DB_DIR"
+    fi
+
+    if [[ -f "$BIN_PATH" ]]; then
+        echo "🗑️ Menghapus CLI aws dari $BIN_PATH..."
+        sudo rm -f "$BIN_PATH"
+    else
+        echo "⚠️ CLI aws tidak ditemukan di $BIN_PATH, dilewati."
+    fi
+
+    echo "✅ Uninstall selesai. Sistem telah dibersihkan."
+}
+
+function help_menu() {
+    echo "Penggunaan: aws [perintah] [opsi]"
+    echo ""
+    echo "Perintah yang tersedia:"
+    echo "  uninstall         → Hapus AWS"
+    echo "  start             → Menjalankan semua service"
+    echo "  stop              → Menghentikan semua service"
+    echo "  start [nama]      → Jalankan service spesifik (contoh: aws start backup)"
+    echo "  stop [nama]       → Hentikan service spesifik (contoh: aws stop api)"
+    echo "  reset             → Reset semua service (stop lalu start)"
+    echo "  status            → Tampilkan status semua service"
+    echo "  check             → Cek apakah file service sudah ada"
+    echo "  help              → Tampilkan menu bantuan"
+}
+
+# === Entry Point ===
+case "$1" in
+    uninstall) uninstall_services ;;
+    start)
+        if [ -n "$2" ]; then
+            start_service_by_name "$2"
+        else
+            start_services
+        fi
+        ;;
+    stop)
+        if [ -n "$2" ]; then
+            stop_service_by_name "$2"
+        else
+            stop_services
+        fi
+        ;;
+    reset) reset_services ;;
+    status) status_services ;;
+    check) check_exists ;;
+    help | *) help_menu ;;
+esac

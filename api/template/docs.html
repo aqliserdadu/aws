@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sensor API Docs</title>
+    <link rel="stylesheet" href="{{ swagger_css_url }}">
+    <link rel="icon" href="/static/icon.png" type="image/x-icon">
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="{{ swagger_js_url }}"></script>
+    <script>
+      SwaggerUIBundle({
+        url: "{{ openapi_url }}",
+        dom_id: '#swagger-ui',
+        layout: "BaseLayout",
+        deepLinking: true
+      });
+    </script>
+  </body>
+</html>

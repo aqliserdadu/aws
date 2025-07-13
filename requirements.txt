@@ -1,0 +1,11 @@
+flask
+psycopg2-binary
+pandas
+pyserial
+sqlalchemy
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+databases
+dotenv

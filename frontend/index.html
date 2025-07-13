@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AWS Dashboard</title>
+  <link rel="icon" type="image/png" href="img/logo.png" />
+  <!-- Style -->
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <!-- Script libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</head>
+
+<body>
+  <header>
+    <div class="header-left">
+      <img src="img/logo.png" alt="Logo" class="logo" />
+    </div>
+    <div class="header-center">
+      <h1>Automatic Weather Station</h1>
+    </div>
+    <div class="header-right">
+      <span id="map-location">Location: -</span>
+    </div>
+
+    <div style="position: absolute; top: 80px; right: 20px; z-index: 999;">
+      <button id="wifi-icon-btn" class="btn btn-outline-secondary position-relative" data-bs-toggle="modal" data-bs-target="#wifiModal" title="Pilih Jaringan WiFi">
+        <img src="https://img.icons8.com/ios-filled/24/000000/wifi.png" alt="WiFi Icon" />
+        <span id="wifi-status-dot"
+          style="position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; background-color: gray; border-radius: 50%; border: 1px solid white;">
+        </span>
+      </button>
+    </div>
+  </header>
+
+  
+
+
+  <main>
+    <div class="card-windrose-wrapper" style="margin:10px">
+      <div class="cards-grid">
+        <div class="card" id="temp-card"><span class="label">Temperature</span><span id="temp-value">-</span><span class="unit">°C</span><span id="temp-time" class="timestamp">-</span></div>
+        <div class="card" id="hum-card"><span class="label">Humidity</span><span id="hum-value">-</span><span class="unit">%</span><span id="hum-time" class="timestamp">-</span></div>
+        <div class="card" id="press-card"><span class="label">Pressure</span><span id="press-value">-</span><span class="unit">hPa</span><span id="press-time" class="timestamp">-</span></div>
+        <div class="card" id="wspeed-card"><span class="label">Wind Speed</span><span id="wspeed-value">-</span><span class="unit">m/s</span><span id="wspeed-time" class="timestamp">-</span></div>
+        <div class="card" id="wdir-card"><span class="label">Wind Dir</span><span id="wdir-value">-</span><span class="unit">°</span><span id="wdir-time" class="timestamp">-</span></div>
+        <div class="card" id="rain-card"><span class="label">Rainfall</span><span id="rain-value">-</span><span class="unit">mm</span><span id="rain-time" class="timestamp">-</span></div>
+        <div class="card" id="srad-card"><span class="label">Solar Radiation</span><span id="srad-value">-</span><span class="unit">W/m²</span><span id="srad-time" class="timestamp">-</span></div>
+      </div>
+      <div class="windrose-box" id="windRoseChart"></div>
+    </div>
+
+   <div class="container my-3">
+     <div class="row g-3 align-items-center">
+   
+       <!-- Pilih Parameter -->
+       <div class="col-md-6">
+         <label for="param-select" class="form-label">Pilih Parameter:</label>
+         <select id="param-select" class="form-select">
+           <!-- Opsi akan diisi secara dinamis -->
+         </select>
+       </div>
+   
+       <!-- Rentang Waktu -->
+       <div class="col-md-6">
+         <label for="time-range" class="form-label">Rentang Waktu:</label>
+         <select id="time-range" class="form-select">
+           <option value="realtime">Realtime</option>
+           <option value="1h">1 Jam</option>
+           <option value="12h">12 Jam</option>
+           <option value="1d">1 Hari</option>
+           <option value="3d">3 Hari</option>
+           <option value="7d">7 Hari</option>
+         </select>
+       </div>
+   
+     </div>
+   </div>
+
+    <div class="chart-map-wrapper" style="padding:10px">
+      <div class="chart-container" >
+        <div id="dataChart" style="width: 100%; height: 350px;"></div>
+      </div>
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+    </div>
+    
+     <div class="container my-4">
+      <div class="row g-3 align-items-end">
+    
+        <!-- Start datetime -->
+        <div class="col-md-3">
+          <label for="start-datetime" class="form-label">Start:</label>
+          <input type="datetime-local" class="form-control" id="start-datetime">
+        </div>
+    
+        <!-- End datetime -->
+        <div class="col-md-3">
+          <label for="end-datetime" class="form-label">End:</label>
+          <input type="datetime-local" class="form-control" id="end-datetime">
+        </div>
+    
+        <!-- Export destination -->
+        <div class="col-md-3">
+          <label for="export-destination" class="form-label">Export to:</label>
+          <select id="export-destination" class="form-select">
+            <option value="download">Download</option>
+            <!-- USB drives will be added dynamically -->
+          </select>
+        </div>
+    
+        <!-- Export button -->
+        <div class="col-md-3">
+          <div id="export-status" class="form-text mt-1"></div>
+        </div>
+
+        <div class="col-md-4">
+          <button id="export-btn" class="btn btn-success w-100">Export</button>
+        </div>
+
+        <!-- Restart button -->
+        <div class="col-md-4">
+          <button id="restart-btn" class="btn w-100 text-white" style="background-color: rgb(250, 185, 6);">🔁 Restart</button>
+        </div>
+    
+        <!-- Shutdown button -->
+        <div class="col-md-4">
+          <button id="shutdown-btn" class="btn btn-danger w-100">Shutdown</button>
+        </div>
+    
+      </div>
+    </div>
+
+    
+  </main>
+
+
+  <div class="modal fade" id="wifiModal" tabindex="-1" aria-labelledby="wifiModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="wifiModalLabel">Pilih Jaringan WiFi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info p-2" id="wifi-current-status" style="font-size: 14px;">
+          Status: Memeriksa koneksi...
+        </div>
+        <form id="wifi-form">
+          <div class="mb-3">
+            <label for="ssid" class="form-label">SSID</label>
+            <select class="form-select" id="ssid" required>
+              <option value="">Memuat daftar jaringan...</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="wifi-password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="wifi-password" placeholder="Password" required />
+          </div>
+          <div id="wifi-status" class="text-muted small"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" form="wifi-form" class="btn btn-primary">Hubungkan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/script.js"></script>
+</body>
+
+<footer class="dashboard-footer">
+  <div class="footer-section left" id="footer-device">Device: -</div>
+  <div class="footer-section center" id="footer-copy">Copyright © 2025 Has Environmental</div>
+  <div class="footer-section right" id="footer-version">Version: -</div>
+</footer>
+
+</html>
